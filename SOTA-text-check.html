@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多语言文本检测工具</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.4rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+        
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background-color: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+        
+        .panel:hover {
+            transform: translateY(-5px);
+        }
+        
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f2f5;
+        }
+        
+        .panel-title i {
+            color: #3498db;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background-color: #ecf0f1;
+            color: #34495e;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #d5dbdb;
+        }
+        
+        .btn-success {
+            background-color: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #219653;
+        }
+        
+        .stats-panel {
+            grid-column: 1 / -1;
+            margin-top: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #3498db;
+        }
+        
+        .stat-card.warning {
+            border-left-color: #e74c3c;
+        }
+        
+        .stat-card.success {
+            border-left-color: #27ae60;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.95rem;
+            margin-top: 5px;
+        }
+        
+        .results-section {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background-color: #fdf2f2;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .line-number {
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .line-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background-color: #fadbd8;
+            color: #e74c3c;
+        }
+        
+        .line-content {
+            font-size: 15px;
+            color: #555;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 6px;
+            border: 1px solid #f0f0f0;
+        }
+        
+        .problems {
+            font-size: 14px;
+            color: #e74c3c;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fdeded;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        
+        .languages {
+            font-size: 14px;
+            color: #3498db;
+            margin-top: 8px;
+            padding: 8px 10px;
+            background-color: #e3f2fd;
+            border-radius: 6px;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: #27ae60;
+            font-size: 1.1rem;
+        }
+        
+        .no-results i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #27ae60;
+        }
+        
+        .language-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .language-tag {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .language-count {
+            font-weight: 700;
+            background-color: #1976d2;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e8ed;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .test-btn {
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        
+        .warning-banner {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>多语言文本检测工具</h1>
+            <p class="subtitle">检测文本中的阿拉伯数字和语言混杂情况。仅显示不符合要求的行。</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="panel">
+                <h2 class="panel-title"><i class="fas fa-keyboard"></i>输入文本</h2>
+                <textarea id="inputText" placeholder="请粘贴或输入需要检测的文本，每行将作为独立内容进行检测...">A: 这是一段中文测试文本，应该通过检测。
+B: 这段文本包含123数字，应该被检测出来。
+中: 这段文本有英文混杂hello world，需要标记。
+韩: 안녕하세요 这是一段韩文中文混杂文本。
+英: This is a pure English text, it should pass.
+法: Bonjour, ceci est un texte en français avec des accents éèà.
+法: Bonjour 你好，这是一段法中混杂文本。
+英: Hello 123数字和英文混杂。
+中: 这段文本包含括号（这是注释内容）。
+英: This text mixes English and français with accents.
+中: 纯中文文本，没有数字和外语。
+英: Only English text here.
+法: Seulement français ici.</textarea>
+                
+                <div class="button-group">
+                    <button class="btn-primary" id="analyzeBtn">
+                        <i class="fas fa-search"></i> 开始检测
+                    </button>
+                    <button class="btn-secondary" id="clearBtn">
+                        <i class="fas fa-eraser"></i> 清空文本
+                    </button>
+                    <button class="btn-secondary" id="exampleBtn">
+                        <i class="fas fa-magic"></i> 加载示例
+                    </button>
+                </div>
+                
+                <div class="test-buttons">
+                    <p style="margin-top:15px; font-weight:600; color:#555;">快速测试：</p>
+                    <button class="test-btn btn-secondary" data-test="mixed">混合语言测试</button>
+                    <button class="test-btn btn-secondary" data-test="french">法语测试</button>
+                    <button class="test-btn btn-secondary" data-test="numbers">数字测试</button>
+                    <button class="test-btn btn-secondary" data-test="pure">纯语言测试</button>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2 class="panel-title"><i class="fas fa-exclamation-triangle"></i>不符合要求的行</h2>
+                <div class="results-section" id="resultsContainer">
+                    <div class="no-results">
+                        <i class="fas fa-check-circle"></i>
+                        <p>暂无不符合要求的行</p>
+                        <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 10px;">点击"开始检测"按钮分析文本</p>
+                    </div>
+                </div>
+                
+                <div id="warningBanner" style="display: none;" class="warning-banner">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div>
+                        <strong>检测到不符合要求的行</strong>
+                        <div style="font-size: 0.9rem; margin-top: 5px;" id="warningText"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel stats-panel">
+                <h2 class="panel-title"><i class="fas fa-chart-pie"></i>统计信息</h2>
+                <div class="stats-grid" id="statsGrid">
+                    <!-- 统计信息将通过JavaScript动态生成 -->
+                </div>
+                
+                <div style="margin-top:25px;">
+                    <h3 style="color:#2c3e50; margin-bottom:15px;">语言分布（仅统计有效行）</h3>
+                    <div id="languageStats" class="language-stats">
+                        <!-- 语言分布将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>多语言文本检测工具 v1.0 | 仅显示不符合要求的行</p>
+            <p>规则：禁止阿拉伯数字，不允许多种语言混杂（英文和法文混合除外）</p>
+        </div>
+    </div>
+
+    <script>
+        // 定义语言字符范围（与Python代码一致）
+        const LANGUAGE_RANGES = {
+            'chinese': { pattern: /[\u4e00-\u9fff]/, name: '中文' },
+            'korean': { pattern: /[\uac00-\ud7a3]/, name: '韩文' },
+            'japanese': { pattern: /[\u3040-\u309f\u30a0-\u30ff]/, name: '日文' },
+            'latin_script': { pattern: /[a-zA-ZÀ-ÿ]/, name: '拉丁字母' },
+            'thai': { pattern: /[\u0e00-\u0e7f]/, name: '泰文' },
+            'arabic': { pattern: /[\u0600-\u06ff]/, name: '阿拉伯文' },
+            'russian': { pattern: /[\u0400-\u04ff]/, name: '俄文' },
+            'numbers': { pattern: /\d/, name: '阿拉伯数字' }
+        };
+
+        // 提取对话内容
+        function extractContent(line) {
+            return line.replace(/^[AB中韩法英]：\s*/, '').trim();
+        }
+
+        // 检测文本中包含的语言
+        function detectLanguages(text) {
+            const detectedLanguages = [];
+            for (const [lang, { pattern, name }] of Object.entries(LANGUAGE_RANGES)) {
+                if (lang === 'numbers') continue;
+                if (pattern.test(text)) {
+                    detectedLanguages.push(name);
+                }
+            }
+            return detectedLanguages;
+        }
+
+        // 检查文本是否只包含拉丁字母
+        function isLatinScriptOnly(text) {
+            const latinPattern = /[a-zA-ZÀ-ÿ]/;
+            const nonLatinPattern = /[^a-zA-ZÀ-ÿ\s\.,!?;:'"-]/;
+            
+            if (nonLatinPattern.test(text)) {
+                return false;
+            }
+            
+            return latinPattern.test(text);
+        }
+
+        // 检查文本是否包含法语特有的重音字符
+        function containsFrenchAccents(text) {
+            const frenchAccentPattern = /[ÀÂÄÈÉÊËÎÏÔŒÙÛÜŸÇàâäèéêëîïôœùûüÿç]/;
+            return frenchAccentPattern.test(text);
+        }
+
+        // 检查单行是否符合要求
+        function checkLine(line, lineNum) {
+            const originalLine = line.trim();
+            if (!originalLine) {
+                return {
+                    isValid: true,
+                    problems: ["空行"],
+                    content: "",
+                    originalLine: originalLine,
+                    detectedLangs: []
+                };
+            }
+
+            const content = extractContent(originalLine);
+            if (!content) {
+                return {
+                    isValid: true,
+                    problems: ["只有对话标记"],
+                    content: "",
+                    originalLine: originalLine,
+                    detectedLangs: []
+                };
+            }
+
+            const problems = [];
+            
+            // 检查括号
+            if (content.includes("（") || content.includes("(")) {
+                problems.push("包含括号注释");
+            }
+            
+            // 检查数字
+            if (/\d/.test(content)) {
+                problems.push("包含阿拉伯数字");
+            }
+            
+            // 检测文本中包含的语言
+            const detectedLangs = detectLanguages(content);
+            
+            // 特殊处理：如果只有拉丁字母，不视为语言混杂
+            if (detectedLangs.length > 1) {
+                // 如果检测到拉丁字母和其他语言，但实际只有拉丁字母
+                if (detectedLangs.length === 2 && detectedLangs.includes('拉丁字母')) {
+                    // 检查是否真的只有拉丁字母（可能误检测）
+                    if (isLatinScriptOnly(content)) {
+                        // 如果是纯拉丁字母，重新设置检测结果
+                        detectedLangs.length = 0; // 清空数组
+                        // 进一步判断是英文还是法文
+                        if (containsFrenchAccents(content)) {
+                            detectedLangs.push('法文');
+                        } else {
+                            detectedLangs.push('英文');
+                        }
+                    } else {
+                        problems.push(`语言混杂: ${detectedLangs.join(', ')}`);
+                    }
+                } else {
+                    problems.push(`语言混杂: ${detectedLangs.join(', ')}`);
+                }
+            } else if (detectedLangs.length === 1 && detectedLangs[0] === '拉丁字母') {
+                // 进一步判断是英文还是法文
+                if (containsFrenchAccents(content)) {
+                    detectedLangs[0] = '法文';
+                } else {
+                    detectedLangs[0] = '英文';
+                }
+            }
+            
+            return {
+                isValid: problems.length === 0,
+                problems,
+                content,
+                originalLine,
+                detectedLangs
+            };
+        }
+
+        // 分析文本
+        function analyzeText(text) {
+            const lines = text.split('\n');
+            const invalidResults = [];
+            const languageStats = {};
+            
+            let validCount = 0;
+            let invalidCount = 0;
+            let emptyCount = 0;
+            let totalCount = lines.length;
+            
+            lines.forEach((line, index) => {
+                const lineNum = index + 1;
+                const result = checkLine(line, lineNum);
+                
+                if (!result.originalLine) {
+                    emptyCount++;
+                    return;
+                }
+                
+                // 更新语言统计（仅统计有效行）
+                const langKey = result.detectedLangs.length > 0 ? 
+                    result.detectedLangs.sort().join('+') : "无文字";
+                languageStats[langKey] = (languageStats[langKey] || 0) + 1;
+                
+                if (result.isValid) {
+                    validCount++;
+                } else {
+                    invalidCount++;
+                    invalidResults.push({ lineNum, ...result });
+                }
+            });
+            
+            return {
+                invalidResults,
+                stats: {
+                    totalLines: totalCount,
+                    emptyLines: emptyCount,
+                    validLines: validCount,
+                    invalidLines: invalidCount,
+                    languageStats
+                }
+            };
+        }
+
+        // 显示分析结果
+        function displayResults(analysis) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            const statsGrid = document.getElementById('statsGrid');
+            const languageStatsContainer = document.getElementById('languageStats');
+            const warningBanner = document.getElementById('warningBanner');
+            const warningText = document.getElementById('warningText');
+            
+            // 清空容器
+            resultsContainer.innerHTML = '';
+            statsGrid.innerHTML = '';
+            languageStatsContainer.innerHTML = '';
+            
+            // 显示统计信息
+            const { totalLines, emptyLines, validLines, invalidLines, languageStats } = analysis.stats;
+            const effectiveLines = totalLines - emptyLines;
+            
+            const statsCards = [
+                { value: totalLines, label: '总行数', icon: 'fas fa-file-alt', type: 'normal' },
+                { value: emptyLines, label: '空行数', icon: 'fas fa-ban', type: 'normal' },
+                { value: effectiveLines, label: '有效行数', icon: 'fas fa-check-circle', type: 'normal' },
+                { value: validLines, label: '符合要求', icon: 'fas fa-thumbs-up', type: 'success' },
+                { value: invalidLines, label: '不符合要求', icon: 'fas fa-exclamation-triangle', type: invalidLines > 0 ? 'warning' : 'normal' }
+            ];
+            
+            statsCards.forEach(stat => {
+                const statCard = document.createElement('div');
+                statCard.className = `stat-card ${stat.type === 'warning' ? 'warning' : stat.type === 'success' ? 'success' : ''}`;
+                statCard.innerHTML = `
+                    <div class="stat-value">${stat.value}</div>
+                    <div class="stat-label">${stat.label}</div>
+                `;
+                statsGrid.appendChild(statCard);
+            });
+            
+            // 显示语言分布
+            Object.entries(languageStats)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([langCombo, count]) => {
+                    const percentage = effectiveLines > 0 ? (count / effectiveLines * 100).toFixed(1) : 0;
+                    const languageTag = document.createElement('div');
+                    languageTag.className = 'language-tag';
+                    languageTag.innerHTML = `
+                        ${langCombo}
+                        <span class="language-count">${count} (${percentage}%)</span>
+                    `;
+                    languageStatsContainer.appendChild(languageTag);
+                });
+            
+            // 显示不符合要求的行
+            if (analysis.invalidResults.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-check-circle"></i>
+                        <p>所有行都符合要求！</p>
+                        <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 10px;">未检测到阿拉伯数字或语言混杂问题</p>
+                    </div>
+                `;
+                warningBanner.style.display = 'none';
+            } else {
+                warningBanner.style.display = 'flex';
+                warningText.textContent = `共发现 ${invalidLines} 行不符合要求，已全部列出如下：`;
+                
+                analysis.invalidResults.forEach(result => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item';
+                    
+                    resultItem.innerHTML = `
+                        <div class="line-number">
+                            第 ${result.lineNum} 行
+                            <span class="line-status">不符合要求</span>
+                        </div>
+                        <div class="line-content"><strong>原始内容：</strong> ${escapeHtml(result.originalLine)}</div>
+                        ${result.content ? `<div class="line-content"><strong>纯内容：</strong> ${escapeHtml(result.content)}</div>` : ''}
+                        ${result.detectedLangs.length > 0 ? 
+                            `<div class="languages"><strong>检测语言：</strong> ${result.detectedLangs.join(', ')}</div>` : ''}
+                        <div class="problems"><strong>问题：</strong> ${result.problems.join('; ')}</div>
+                    `;
+                    
+                    resultsContainer.appendChild(resultItem);
+                });
+            }
+        }
+
+        // 转义HTML特殊字符
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 绑定事件
+        document.getElementById('analyzeBtn').addEventListener('click', function() {
+            const inputText = document.getElementById('inputText').value;
+            const analysis = analyzeText(inputText);
+            displayResults(analysis);
+            
+            // 滚动到结果区域
+            document.querySelector('.panel:nth-child(2)').scrollIntoView({ behavior: 'smooth' });
+        });
+        
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            document.getElementById('inputText').value = '';
+        });
+        
+        document.getElementById('exampleBtn').addEventListener('click', function() {
+            document.getElementById('inputText').value = `A: 这是一段中文测试文本，应该通过检测。
+B: 这段文本包含123数字，应该被检测出来。
+中: 这段文本有英文混杂hello world，需要标记。
+韩: 안녕하세요 这是一段韩文中文混杂文本。
+英: This is a pure English text, it should pass.
+法: Bonjour, ceci est un texte en français avec des accents éèà.
+法: Bonjour 你好，这是一段法中混杂文本。
+英: Hello 123数字和英文混杂。
+中: 这段文本包含括号（这是注释内容）。
+英: This text mixes English and français with accents.
+中: 纯中文文本，没有数字和外语。
+英: Only English text here.
+法: Seulement français ici.`;
+        });
+        
+        // 测试按钮功能
+        document.querySelectorAll('.test-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const testType = this.getAttribute('data-test');
+                let testText = '';
+                
+                switch(testType) {
+                    case 'mixed':
+                        testText = `A: 混合语言测试
+B: 这段文本有英文混杂hello world
+韩: 안녕하세요 这是韩文和中文
+法: Bonjour 你好，法中混杂
+英: Hello 123数字和英文混杂
+中: 纯中文文本，应该通过
+法: Pure French text, should pass`;
+                        break;
+                    case 'french':
+                        testText = `法: Bonjour, comment ça va?
+法: C'est la vie, avec des accents éèà
+法: Bonjour Hello (法英混合应该通过)
+中: 纯中文文本
+英: Only English`;
+                        break;
+                    case 'numbers':
+                        testText = `中: 这段有123数字
+英: Number 456 test
+中: 纯中文没有数字
+英: No numbers here`;
+                        break;
+                    case 'pure':
+                        testText = `中: 这是纯中文文本
+英: This is pure English text
+法: Ceci est un texte purement français
+韩: 안녕하세요 순수한 한국어 텍스트`;
+                        break;
+                }
+                
+                document.getElementById('inputText').value = testText;
+                
+                // 自动分析
+                const analysis = analyzeText(testText);
+                displayResults(analysis);
+            });
+        });
+
+        // 页面加载时自动分析示例文本
+        window.addEventListener('DOMContentLoaded', function() {
+            const exampleText = document.getElementById('inputText').value;
+            const analysis = analyzeText(exampleText);
+            displayResults(analysis);
+        });
+    </script>
+</body>
+</html>
