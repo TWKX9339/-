@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pipeline · 数据验证</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, "Segoe UI", sans-serif; max-width: 640px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
+    h1 { font-size: 1.25rem; color: #1a1a1a; margin-bottom: 6px; }
+    .hint { font-size: 0.85rem; color: #666; margin-bottom: 16px; }
+    label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; color: #333; }
+    input[type="file"] { font-size: 0.9rem; }
+    .row { margin-bottom: 14px; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; margin-right: 8px; margin-top: 4px; background: #0d6efd; color: #fff; }
+    .btn:hover { background: #0b5ed7; }
+    .btn:disabled { background: #adb5bd; cursor: not-allowed; }
+    #fileInfo { font-size: 0.85rem; color: #666; margin-top: 6px; }
+    #result { margin-top: 20px; padding: 12px; border-radius: 8px; background: #fff; border: 1px solid #dee2e6; }
+    #result h2 { font-size: 1rem; margin: 0 0 10px; }
+    #result .ok { color: #198754; }
+    #result .err { color: #dc3545; }
+    #result ul { margin: 0; padding-left: 20px; font-size: 0.9rem; }
+    #result .folder { margin: 4px 0; }
+    #result .detail { font-size: 0.85rem; color: #666; margin-left: 4px; }
+    .loading { color: #0d6efd; }
+  </style>
+</head>
+<body>
+  <h1>数据验证</h1>
+  <p class="hint">选择包含「子文件夹」的根目录，每个子文件夹内需有音频(.wav/.m4a/.mp3)与 .txt 文本，且「音频数量 = 文本清理后行数」才通过。</p>
+
+  <div class="row">
+    <label>选择数据根目录（包含多个场景子文件夹）</label>
+    <input type="file" id="folder" webkitdirectory directory multiple />
+    <div id="fileInfo"></div>
+  </div>
+  <div class="row">
+    <button type="button" class="btn" id="run">开始验证</button>
+  </div>
+  <div id="result"></div>
+
+  <script>
+    var folderEl = document.getElementById('folder');
+    var fileInfoEl = document.getElementById('fileInfo');
+    var resultEl = document.getElementById('result');
+    var runBtn = document.getElementById('run');
+
+    function stem(name) {
+      var i = name.lastIndexOf('.');
+      return i > 0 ? name.slice(0, i) : name;
+    }
+
+    function cleanText(content, filename) {
+      var baseName = stem(filename);
+      var lines = content.split('\n');
+      var out = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (i === 0 && line === baseName) continue;
+        if (!line) continue;
+        if (line.length < 5 && /^\d+$/.test(line)) continue;
+        if (line.replace(/[（(].*?[）)]/g, '').trim() === '') continue;
+        out.push(line);
+      }
+      return out;
+    }
+
+    function decodeBytes(buf) {
+      try {
+        var u8 = new TextDecoder('utf-8').decode(buf);
+        if (u8.indexOf('\uFFFD') === -1) return u8;
+      } catch (e) {}
+      try {
+        return new TextDecoder('gbk').decode(buf);
+      } catch (e2) {}
+      return new TextDecoder('utf-8', { fatal: false }).decode(buf);
+    }
+
+    function readFileAsText(file) {
+      return new Promise(function (resolve, reject) {
+        var fr = new FileReader();
+        fr.onload = function () { resolve(decodeBytes(fr.result)); };
+        fr.onerror = function () { reject(new Error('读取失败: ' + file.name)); };
+        fr.readAsArrayBuffer(file);
+      });
+    }
+
+    function groupByFolder(files) {
+      var byFolder = {};
+      for (var i = 0; i < files.length; i++) {
+        var f = files[i];
+        var path = (f.webkitRelativePath || f.name || '').replace(/\\/g, '/');
+        var idx = path.lastIndexOf('/');
+        var folder = idx >= 0 ? path.slice(0, idx) : '';
+        if (!byFolder[folder]) byFolder[folder] = [];
+        byFolder[folder].push(f);
+      }
+      return byFolder;
+    }
+
+    function runValidation() {
+      var files = folderEl.files;
+      if (!files || files.length === 0) {
+        resultEl.innerHTML = '<p class="err">请先选择根目录。</p>';
+        return;
+      }
+
+      var byFolder = groupByFolder(files);
+      var audioExt = { '.wav': 1, '.m4a': 1, '.mp3': 1 };
+      var validFolders = [];
+      var problemFolders = [];
+      var totalFolders = 0;
+
+      runBtn.disabled = true;
+      resultEl.innerHTML = '<p class="loading">正在验证…</p>';
+
+      var folders = Object.keys(byFolder).filter(function (k) { return byFolder[k].length; });
+      var promises = [];
+
+      folders.forEach(function (folderPath) {
+        var list = byFolder[folderPath];
+        var audioFiles = list.filter(function (f) {
+          var n = f.name.toLowerCase();
+          return n.endsWith('.wav') || n.endsWith('.m4a') || n.endsWith('.mp3');
+        });
+        var txtFiles = list.filter(function (f) {
+          return f.name.endsWith('.txt') && f.name.indexOf('映射关系') !== 0;
+        });
+
+        if (audioFiles.length === 0) return;
+        totalFolders++;
+
+        if (txtFiles.length === 0) {
+          problemFolders.push({
+            folder: folderPath || '(根)',
+            audio_count: audioFiles.length,
+            error: '没有找到文本文件'
+          });
+          return;
+        }
+
+        var p = Promise.all(txtFiles.map(function (tf) {
+          return readFileAsText(tf).then(function (content) {
+            return { name: tf.name, lines: cleanText(content, tf.name).length };
+          }).catch(function (err) {
+            return { name: tf.name, error: err.message };
+          });
+        })).then(function (results) {
+          var err = results.find(function (r) { return r.error; });
+          if (err) {
+            problemFolders.push({
+              folder: folderPath || '(根)',
+              audio_count: audioFiles.length,
+              error: '读取文本失败: ' + err.name + ' - ' + err.error
+            });
+            return;
+          }
+          var totalLines = results.reduce(function (s, r) { return s + r.lines; }, 0);
+          var txtDetails = results.map(function (r) { return r.name + ': ' + r.lines + ' 行'; });
+          if (audioFiles.length !== totalLines) {
+            problemFolders.push({
+              folder: folderPath || '(根)',
+              audio_count: audioFiles.length,
+              text_lines: totalLines,
+              txt_details: txtDetails,
+              error: '音频(' + audioFiles.length + ') ≠ 文本行数(' + totalLines + ')'
+            });
+          } else {
+            validFolders.push(folderPath || '(根)');
+          }
+        });
+        promises.push(p);
+      });
+
+      Promise.all(promises).then(function () {
+        runBtn.disabled = false;
+        var html = '<h2>验证结果</h2>';
+        html += '<p>扫描文件夹: <strong>' + totalFolders + '</strong> &nbsp; 正常: <strong class="ok">' + validFolders.length + '</strong> &nbsp; 问题: <strong class="err">' + problemFolders.length + '</strong></p>';
+        if (validFolders.length) {
+          html += '<p class="ok">✅ 正常文件夹 (' + validFolders.length + ')</p><ul>';
+          validFolders.forEach(function (f) { html += '<li class="folder">' + escapeHtml(f) + '</li>'; });
+          html += '</ul>';
+        }
+        if (problemFolders.length) {
+          html += '<p class="err">⚠️ 问题文件夹 (' + problemFolders.length + ')</p><ul>';
+          problemFolders.forEach(function (p) {
+            html += '<li class="folder">' + escapeHtml(p.folder) + '<span class="detail">— ' + escapeHtml(p.error) + '</span>';
+            if (p.txt_details && p.txt_details.length) html += '<ul><li>' + escapeHtml(p.txt_details.join('</li><li>')) + '</li></ul>';
+            html += '</li>';
+          });
+          html += '</ul>';
+        }
+        if (totalFolders === 0) html += '<p class="err">未找到包含音频的子文件夹。</p>';
+        resultEl.innerHTML = html;
+      }).catch(function (e) {
+        runBtn.disabled = false;
+        resultEl.innerHTML = '<p class="err">验证出错: ' + escapeHtml(String(e)) + '</p>';
+      });
+    }
+
+    function escapeHtml(s) {
+      var div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    folderEl.addEventListener('change', function () {
+      var n = folderEl.files.length;
+      fileInfoEl.textContent = n ? '已选择 ' + n + ' 个文件，点击「开始验证」' : '';
+    });
+    runBtn.addEventListener('click', runValidation);
+  </script>
+</body>
+</html>
